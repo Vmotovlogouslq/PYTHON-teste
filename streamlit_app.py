@@ -377,11 +377,46 @@ def main():
         account(user)
 
 
+def show_connection_error(error):
+    # Não exiba a exceção original: mensagens do driver podem conter dados de conexão.
+    code = getattr(error, "errno", None)
+    logging.getLogger(__name__).error(
+        "Falha ao abrir a Cantina: tipo=%s codigo=%s", type(error).__name__, code)
+    if isinstance(error, FileNotFoundError):
+        if Path(error.filename or "").name == "streamlit_style.css":
+            message = "Falta streamlit_style.css. Envie esse arquivo ao GitHub, ao lado de streamlit_app.py."
+        else:
+            message = ("O certificado CA não foi encontrado. Envie deploy/aiven-ca.pem ao GitHub "
+                       'e configure MYSQL_SSL_CA = "deploy/aiven-ca.pem" nos Secrets.')
+    elif isinstance(error, mysql.connector.Error):
+        messages = {
+            1045: "O Aiven recusou o usuário ou a senha. Confira MYSQL_USER e MYSQL_PASSWORD nos Secrets.",
+            1049: 'O banco informado não existe. No Aiven, confira MYSQL_DATABASE = "defaultdb" nos Secrets.',
+            1044: "O usuário não tem permissão para acessar o banco informado nos Secrets.",
+            1142: "O usuário do banco não tem permissão para criar ou consultar as tabelas da Cantina.",
+            2005: "O endereço do banco não foi encontrado. Confira MYSQL_HOST nos Secrets.",
+            2026: "Não foi possível validar o SSL. Confira o certificado CA atual do serviço Aiven e MYSQL_SSL_CA.",
+        }
+        if code in {2002, 2003} and db.CONFIG["host"] in {"localhost", "127.0.0.1", "::1"}:
+            message = ("O aplicativo está tentando acessar um banco local. No site publicado, configure "
+                       "os Secrets MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE "
+                       "e MYSQL_SSL_CA no nível raiz, sem uma seção [mysql]. Depois reinicie o app.")
+        elif code in {2002, 2003, 2013, 2055}:
+            message = ("Não foi possível conectar ao servidor do banco. Confira MYSQL_HOST, MYSQL_PORT, "
+                       "o status Running e eventuais restrições de rede no Aiven.")
+        else:
+            message = messages.get(code, "Falha ao acessar o banco. Confira a configuração nos Secrets e os logs do aplicativo.")
+        if isinstance(code, int):
+            message += f" Código MySQL: {code}."
+    else:
+        message = "Confira MYSQL_SSL_CA nos Secrets: o banco remoto exige o caminho do certificado CA."
+    st.error(message)
+
+
 if __name__ == "__main__":
     try:
         main()
     except (mysql.connector.Error, ValueError, FileNotFoundError) as error:
-        logging.getLogger(__name__).error("Falha na configuração/conexão: %s", type(error).__name__)
-        st.error("Não foi possível acessar o banco. Confira os Secrets, o certificado e o status Running no Aiven.")
+        show_connection_error(error)
         if st.button("Tentar novamente", key="retry_database"):
             st.rerun()

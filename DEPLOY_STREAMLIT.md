@@ -96,6 +96,12 @@ O caminho do CA deve corresponder ao arquivo disponível: no pacote é
 - **Can't open file:** confira o Main file path e a localização de `streamlit_app.py`.
 - **Não foi possível acessar o banco:** confira os Secrets, o status Running no Aiven
   e a presença de `deploy/aiven-ca.pem` no GitHub.
+- **Tentando acessar um banco local:** os Secrets do Aiven não foram aplicados. No
+  aplicativo publicado, abra **Settings → Secrets**, preencha os campos do modelo
+  no nível raiz (sem `[mysql]`) e reinicie o aplicativo depois de salvar.
+- **Código MySQL 1045:** confira o usuário e a senha atuais no Aiven.
+- **Certificado CA não encontrado:** confirme a pasta `deploy` e o arquivo
+  `aiven-ca.pem` no repositório; nomes e maiúsculas devem coincidir com os Secrets.
 - **Alterou a senha do banco:** atualize `MYSQL_PASSWORD` nos Secrets e reinicie o app.
 - **Certificado mudou:** substitua `deploy/aiven-ca.pem` pelo CA atual do serviço.
 

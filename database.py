@@ -33,6 +33,8 @@ def conectar(com_banco=True):
         ca_path = Path(SSL_CA)
         if not ca_path.is_absolute():
             ca_path = BASE_DIR / ca_path
+        if not ca_path.is_file():
+            raise FileNotFoundError(2, "Certificado CA não encontrado", str(ca_path))
         cfg.update(ssl_ca=str(ca_path), ssl_verify_cert=True,
                    ssl_verify_identity=True, ssl_disabled=False)
     elif CONFIG["host"] not in {"localhost", "127.0.0.1", "::1"}:
